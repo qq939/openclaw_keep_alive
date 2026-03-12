@@ -1,0 +1,6 @@
+services:
+  keepalive-control:
+    build: .
+    ports:
+      - "7861:8079"
+    restart: always
