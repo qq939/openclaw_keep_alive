@@ -53,10 +53,20 @@ function Get-ServiceStatus($serviceName) {
     }
 }
 
-Log-Message "--- Keep-Alive Service Started (Log Version 3.0 - Independent Switches) ---"
+Log-Message "--- Keep-Alive Service Started (Log Version 3.1 - With Master Control) ---"
 
 while($true) {
     try {
+        $isControlOn = Get-ServiceStatus "control"
+        $controlStatus = if ($isControlOn) { "ON" } else { "OFF" }
+        Log-Message "Control Center: $controlStatus"
+        
+        if (-not $isControlOn) {
+            Log-Message "Control Center is OFF. Skipping all health checks."
+            Start-Sleep -Seconds 60
+            continue
+        }
+        
         $isOpenClawKeepAliveOn = Get-ServiceStatus "openclaw"
         $isComfyUIKeepAliveOn = Get-ServiceStatus "comfyui"
         

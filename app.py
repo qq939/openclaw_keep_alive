@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, make_response
 app = Flask(__name__)
 
-status = {"openclaw": "on", "comfyui": "on"}
+status = {"control": "on", "openclaw": "on", "comfyui": "on"}
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -113,6 +113,22 @@ HTML_TEMPLATE = """
     <div class="container">
         <h1>🤖 Keep-Alive 控制中心</h1>
         
+        <div class="service-card" style="border: 2px solid #00d26a;">
+            <div class="service-info">
+                <h2>🎛️ 控制中心</h2>
+                <p>Master Switch - 全局启停</p>
+            </div>
+            <div style="text-align: right;">
+                <div class="status-indicator">
+                    <span class="dot {{ 'on' if status.control == 'on' else 'off' }}"></span>
+                    <span>{{ 'ON' if status.control == 'on' else 'OFF' }}</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <a href="/control/toggle" class="toggle-btn {{ 'active' if status.control == 'on' else 'inactive' }}"></a>
+                </div>
+            </div>
+        </div>
+        
         <div class="service-card">
             <div class="service-info">
                 <h2>🐝 OpenClaw Gateway</h2>
@@ -156,7 +172,10 @@ HTML_TEMPLATE = """
 
 @app.route('/', methods=['GET'])
 def home():
-    rendered = HTML_TEMPLATE.replace('{{ \'on\' if status.openclaw == \'on\' else \'off\' }}', 'on' if status['openclaw'] == 'on' else 'off')
+    rendered = HTML_TEMPLATE.replace('{{ status.control }}', status['control'])
+    rendered = rendered.replace('{{ \'on\' if status.control == \'on\' else \'off\' }}', 'on' if status['control'] == 'on' else 'off')
+    rendered = rendered.replace('{{ \'active\' if status.control == \'on\' else \'inactive\' }}', 'active' if status['control'] == 'on' else 'inactive')
+    rendered = rendered.replace('{{ \'on\' if status.openclaw == \'on\' else \'off\' }}', 'on' if status['openclaw'] == 'on' else 'off')
     rendered = rendered.replace('{{ \'active\' if status.openclaw == \'on\' else \'inactive\' }}', 'active' if status['openclaw'] == 'on' else 'inactive')
     rendered = rendered.replace('{{ status.openclaw }}', status['openclaw'])
     rendered = rendered.replace('{{ \'on\' if status.comfyui == \'on\' else \'off\' }}', 'on' if status['comfyui'] == 'on' else 'off')
@@ -169,6 +188,21 @@ def home():
 @app.route('/status', methods=['GET'])
 def get_status():
     return jsonify(status)
+
+@app.route('/control/on', methods=['GET', 'POST'])
+def control_on():
+    status['control'] = 'on'
+    return make_response(f"Control Center is ON. <br><a href='/'>Go back</a>")
+
+@app.route('/control/off', methods=['GET', 'POST'])
+def control_off():
+    status['control'] = 'off'
+    return make_response(f"Control Center is OFF. <br><a href='/'>Go back</a>")
+
+@app.route('/control/toggle', methods=['GET', 'POST'])
+def control_toggle():
+    status['control'] = 'off' if status['control'] == 'on' else 'on'
+    return make_response(f"Control Center is {status['control'].upper()}. <br><a href='/'>Go back</a>")
 
 @app.route('/openclaw/on', methods=['GET', 'POST'])
 def openclaw_on():
