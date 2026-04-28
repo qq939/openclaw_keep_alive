@@ -45,6 +45,9 @@ HTML_TEMPLATE = """
             justify-content: space-between;
             align-items: center;
         }
+        .service-card.master {
+            border: 2px solid #00d26a;
+        }
         .service-info h2 {
             font-size: 20px;
             margin-bottom: 5px;
@@ -113,18 +116,18 @@ HTML_TEMPLATE = """
     <div class="container">
         <h1>🤖 Keep-Alive 控制中心</h1>
         
-        <div class="service-card" style="border: 2px solid #00d26a;">
+        <div class="service-card master">
             <div class="service-info">
                 <h2>🎛️ 控制中心</h2>
                 <p>Master Switch - 全局启停</p>
             </div>
             <div style="text-align: right;">
                 <div class="status-indicator">
-                    <span class="dot {{ 'on' if status.control == 'on' else 'off' }}"></span>
-                    <span>{{ 'ON' if status.control == 'on' else 'OFF' }}</span>
+                    <span class="dot CONTROL_DOT_CLASS"></span>
+                    <span>CONTROL_STATUS_TEXT</span>
                 </div>
                 <div style="margin-top: 10px;">
-                    <a href="/control/toggle" class="toggle-btn {{ 'active' if status.control == 'on' else 'inactive' }}"></a>
+                    <a href="/control/toggle" class="toggle-btn CONTROL_BTN_CLASS"></a>
                 </div>
             </div>
         </div>
@@ -136,11 +139,11 @@ HTML_TEMPLATE = """
             </div>
             <div style="text-align: right;">
                 <div class="status-indicator">
-                    <span class="dot {{ 'on' if status.openclaw == 'on' else 'off' }}"></span>
-                    <span>{{ 'ON' if status.openclaw == 'on' else 'OFF' }}</span>
+                    <span class="dot OPENCLAW_DOT_CLASS"></span>
+                    <span>OPENCLAW_STATUS_TEXT</span>
                 </div>
                 <div style="margin-top: 10px;">
-                    <a href="/openclaw/toggle" class="toggle-btn {{ 'active' if status.openclaw == 'on' else 'inactive' }}"></a>
+                    <a href="/openclaw/toggle" class="toggle-btn OPENCLAW_BTN_CLASS"></a>
                 </div>
             </div>
         </div>
@@ -152,11 +155,11 @@ HTML_TEMPLATE = """
             </div>
             <div style="text-align: right;">
                 <div class="status-indicator">
-                    <span class="dot {{ 'on' if status.comfyui == 'on' else 'off' }}"></span>
-                    <span>{{ 'ON' if status.comfyui == 'on' else 'OFF' }}</span>
+                    <span class="dot COMFYUI_DOT_CLASS"></span>
+                    <span>COMFYUI_STATUS_TEXT</span>
                 </div>
                 <div style="margin-top: 10px;">
-                    <a href="/comfyui/toggle" class="toggle-btn {{ 'active' if status.comfyui == 'on' else 'inactive' }}"></a>
+                    <a href="/comfyui/toggle" class="toggle-btn COMFYUI_BTN_CLASS"></a>
                 </div>
             </div>
         </div>
@@ -170,17 +173,32 @@ HTML_TEMPLATE = """
 </html>
 """
 
+def render_status(key):
+    s = status.get(key, "off")
+    return (s.upper() if s == "on" else "OFF", 
+            "on" if s == "on" else "off",
+            "active" if s == "on" else "inactive")
+
 @app.route('/', methods=['GET'])
 def home():
-    rendered = HTML_TEMPLATE.replace('{{ status.control }}', status['control'])
-    rendered = rendered.replace('{{ \'on\' if status.control == \'on\' else \'off\' }}', 'on' if status['control'] == 'on' else 'off')
-    rendered = rendered.replace('{{ \'active\' if status.control == \'on\' else \'inactive\' }}', 'active' if status['control'] == 'on' else 'inactive')
-    rendered = rendered.replace('{{ \'on\' if status.openclaw == \'on\' else \'off\' }}', 'on' if status['openclaw'] == 'on' else 'off')
-    rendered = rendered.replace('{{ \'active\' if status.openclaw == \'on\' else \'inactive\' }}', 'active' if status['openclaw'] == 'on' else 'inactive')
-    rendered = rendered.replace('{{ status.openclaw }}', status['openclaw'])
-    rendered = rendered.replace('{{ \'on\' if status.comfyui == \'on\' else \'off\' }}', 'on' if status['comfyui'] == 'on' else 'off')
-    rendered = rendered.replace('{{ \'active\' if status.comfyui == \'on\' else \'inactive\' }}', 'active' if status['comfyui'] == 'on' else 'inactive')
-    rendered = rendered.replace('{{ status.comfyui }}', status['comfyui'])
+    rendered = HTML_TEMPLATE
+    
+    cntrl_txt, cntrl_dot, cntrl_btn = render_status("control")
+    openclaw_txt, openclaw_dot, openclaw_btn = render_status("openclaw")
+    comfyui_txt, comfyui_dot, comfyui_btn = render_status("comfyui")
+    
+    rendered = rendered.replace("CONTROL_STATUS_TEXT", cntrl_txt)
+    rendered = rendered.replace("CONTROL_DOT_CLASS", cntrl_dot)
+    rendered = rendered.replace("CONTROL_BTN_CLASS", cntrl_btn)
+    
+    rendered = rendered.replace("OPENCLAW_STATUS_TEXT", openclaw_txt)
+    rendered = rendered.replace("OPENCLAW_DOT_CLASS", openclaw_dot)
+    rendered = rendered.replace("OPENCLAW_BTN_CLASS", openclaw_btn)
+    
+    rendered = rendered.replace("COMFYUI_STATUS_TEXT", comfyui_txt)
+    rendered = rendered.replace("COMFYUI_DOT_CLASS", comfyui_dot)
+    rendered = rendered.replace("COMFYUI_BTN_CLASS", comfyui_btn)
+    
     response = make_response(rendered)
     response.headers['Content-Type'] = 'text/html; charset=utf-8'
     return response
