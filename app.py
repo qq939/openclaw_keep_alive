@@ -30,12 +30,7 @@ HTML_TEMPLATE = """
             max-width: 500px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 28px;
-            letter-spacing: 2px;
-        }
+        h1 { text-align: center; margin-bottom: 30px; font-size: 28px; letter-spacing: 2px; }
         .service-card {
             background: rgba(255, 255, 255, 0.08);
             border-radius: 15px;
@@ -45,38 +40,44 @@ HTML_TEMPLATE = """
             justify-content: space-between;
             align-items: center;
         }
-        .service-card.master {
-            border: 2px solid #00d26a;
-        }
-        .service-info h2 {
-            font-size: 20px;
-            margin-bottom: 5px;
-        }
-        .service-info p {
-            font-size: 14px;
-            opacity: 0.7;
-        }
-        .toggle-btn {
+        .service-card.master { border: 2px solid #00d26a; }
+        .service-info h2 { font-size: 20px; margin-bottom: 5px; }
+        .service-info p { font-size: 14px; opacity: 0.7; }
+        
+        .switch {
             position: relative;
-            width: 80px;
-            height: 40px;
-            background: #333;
-            border-radius: 20px;
+            width: 70px;
+            height: 34px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
             cursor: pointer;
-            transition: background 0.3s;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #ff4757;
+            transition: .4s;
+            border-radius: 34px;
         }
-        .toggle-btn.active { background: #00d26a; }
-        .toggle-btn.inactive { background: #ff4757; }
-        .toggle-btn a {
-            display: block;
-            width: 100%;
-            height: 100%;
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background: white;
+            transition: .4s;
+            border-radius: 50%;
         }
+        input:checked + .slider { background: #00d26a; }
+        input:checked + .slider:before { transform: translateX(36px); }
+        
         .status-indicator {
             display: flex;
             align-items: center;
             gap: 8px;
             font-size: 14px;
+            margin-bottom: 10px;
         }
         .dot {
             width: 10px;
@@ -86,10 +87,8 @@ HTML_TEMPLATE = """
         }
         .dot.on { background: #00d26a; box-shadow: 0 0 10px #00d26a; }
         .dot.off { background: #ff4757; box-shadow: 0 0 10px #ff4757; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
         .links {
             text-align: center;
             margin-top: 30px;
@@ -104,13 +103,14 @@ HTML_TEMPLATE = """
             padding: 8px 16px;
             border-radius: 8px;
             background: rgba(138, 170, 229, 0.1);
-            transition: all 0.3s;
-        }
-        .links a:hover {
-            background: rgba(138, 170, 229, 0.2);
-            transform: translateY(-2px);
         }
     </style>
+    <script>
+        function toggleSwitch(key) {
+            fetch('/' + key + '/toggle', {method: 'GET'})
+                .then(() => location.reload());
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -126,9 +126,10 @@ HTML_TEMPLATE = """
                     <span class="dot CONTROL_DOT_CLASS"></span>
                     <span>CONTROL_STATUS_TEXT</span>
                 </div>
-                <div style="margin-top: 10px;">
-                    <a href="/control/toggle" class="toggle-btn CONTROL_BTN_CLASS"></a>
-                </div>
+                <label class="switch">
+                    <input type="checkbox" CONTROL_CHECKED onchange="toggleSwitch('control')">
+                    <span class="slider"></span>
+                </label>
             </div>
         </div>
         
@@ -142,9 +143,10 @@ HTML_TEMPLATE = """
                     <span class="dot OPENCLAW_DOT_CLASS"></span>
                     <span>OPENCLAW_STATUS_TEXT</span>
                 </div>
-                <div style="margin-top: 10px;">
-                    <a href="/openclaw/toggle" class="toggle-btn OPENCLAW_BTN_CLASS"></a>
-                </div>
+                <label class="switch">
+                    <input type="checkbox" OPENCLAW_CHECKED onchange="toggleSwitch('openclaw')">
+                    <span class="slider"></span>
+                </label>
             </div>
         </div>
         
@@ -158,9 +160,10 @@ HTML_TEMPLATE = """
                     <span class="dot COMFYUI_DOT_CLASS"></span>
                     <span>COMFYUI_STATUS_TEXT</span>
                 </div>
-                <div style="margin-top: 10px;">
-                    <a href="/comfyui/toggle" class="toggle-btn COMFYUI_BTN_CLASS"></a>
-                </div>
+                <label class="switch">
+                    <input type="checkbox" COMFYUI_CHECKED onchange="toggleSwitch('comfyui')">
+                    <span class="slider"></span>
+                </label>
             </div>
         </div>
         
@@ -177,27 +180,27 @@ def render_status(key):
     s = status.get(key, "off")
     return (s.upper() if s == "on" else "OFF", 
             "on" if s == "on" else "off",
-            "active" if s == "on" else "inactive")
+            "checked" if s == "on" else "")
 
 @app.route('/', methods=['GET'])
 def home():
     rendered = HTML_TEMPLATE
     
-    cntrl_txt, cntrl_dot, cntrl_btn = render_status("control")
-    openclaw_txt, openclaw_dot, openclaw_btn = render_status("openclaw")
-    comfyui_txt, comfyui_dot, comfyui_btn = render_status("comfyui")
+    cntrl_txt, cntrl_dot, cntrl_chk = render_status("control")
+    openclaw_txt, openclaw_dot, openclaw_chk = render_status("openclaw")
+    comfyui_txt, comfyui_dot, comfyui_chk = render_status("comfyui")
     
     rendered = rendered.replace("CONTROL_STATUS_TEXT", cntrl_txt)
     rendered = rendered.replace("CONTROL_DOT_CLASS", cntrl_dot)
-    rendered = rendered.replace("CONTROL_BTN_CLASS", cntrl_btn)
+    rendered = rendered.replace("CONTROL_CHECKED", cntrl_chk)
     
     rendered = rendered.replace("OPENCLAW_STATUS_TEXT", openclaw_txt)
     rendered = rendered.replace("OPENCLAW_DOT_CLASS", openclaw_dot)
-    rendered = rendered.replace("OPENCLAW_BTN_CLASS", openclaw_btn)
+    rendered = rendered.replace("OPENCLAW_CHECKED", openclaw_chk)
     
     rendered = rendered.replace("COMFYUI_STATUS_TEXT", comfyui_txt)
     rendered = rendered.replace("COMFYUI_DOT_CLASS", comfyui_dot)
-    rendered = rendered.replace("COMFYUI_BTN_CLASS", comfyui_btn)
+    rendered = rendered.replace("COMFYUI_CHECKED", comfyui_chk)
     
     response = make_response(rendered)
     response.headers['Content-Type'] = 'text/html; charset=utf-8'
