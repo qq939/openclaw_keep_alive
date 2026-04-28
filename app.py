@@ -1,9 +1,21 @@
 from flask import Flask, jsonify, make_response
+import os
+
 app = Flask(__name__)
 
-status = {"control": "on", "openclaw": "on", "comfyui": "on"}
+STATUS_DIR = os.path.join(os.path.dirname(__file__), "..", "status")
 
-HTML_TEMPLATE = """
+def read_status(key):
+    f = os.path.join(STATUS_DIR, f"{key}.txt")
+    if os.path.exists(f):
+        return open(f).read().strip()
+    return "on"
+
+def write_status(key, value):
+    f = os.path.join(STATUS_DIR, f"{key}.txt")
+    open(f, "w").write(value)
+
+HTML = """
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -31,7 +43,7 @@ HTML_TEMPLATE = """
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
         h1 { text-align: center; margin-bottom: 30px; font-size: 28px; letter-spacing: 2px; }
-        .service-card {
+        .card {
             background: rgba(255, 255, 255, 0.08);
             border-radius: 15px;
             padding: 25px;
@@ -40,220 +52,77 @@ HTML_TEMPLATE = """
             justify-content: space-between;
             align-items: center;
         }
-        .service-card.master { border: 2px solid #00d26a; }
-        .service-info h2 { font-size: 20px; margin-bottom: 5px; }
-        .service-info p { font-size: 14px; opacity: 0.7; }
-        
-        .switch {
-            position: relative;
-            width: 70px;
-            height: 34px;
-        }
-        .switch input { opacity: 0; width: 0; height: 0; }
+        .card.master { border: 2px solid #00d26a; }
+        .info h2 { font-size: 20px; margin-bottom: 5px; }
+        .info p { font-size: 14px; opacity: 0.7; }
+        .switch { position: relative; width: 70px; height: 34px; }
+        .switch input { display: none; }
         .slider {
-            position: absolute;
-            cursor: pointer;
+            position: absolute; cursor: pointer;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: #ff4757;
-            transition: .4s;
-            border-radius: 34px;
+            background: #ff4757; transition: .4s; border-radius: 34px;
         }
         .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background: white;
-            transition: .4s;
-            border-radius: 50%;
+            position: absolute; content: "";
+            height: 26px; width: 26px;
+            left: 4px; bottom: 4px;
+            background: white; transition: .4s; border-radius: 50%;
         }
         input:checked + .slider { background: #00d26a; }
         input:checked + .slider:before { transform: translateX(36px); }
-        
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
+        .status { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; animation: pulse 2s infinite; }
         .dot.on { background: #00d26a; box-shadow: 0 0 10px #00d26a; }
         .dot.off { background: #ff4757; box-shadow: 0 0 10px #ff4757; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        
-        .links {
-            text-align: center;
-            margin-top: 30px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-        }
-        .links a {
-            color: #8aaae5;
-            text-decoration: none;
-            font-size: 14px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            background: rgba(138, 170, 229, 0.1);
-        }
+        .links { text-align: center; margin-top: 30px; display: flex; justify-content: center; gap: 15px; }
+        .links a { color: #8aaae5; text-decoration: none; font-size: 14px; padding: 8px 16px; border-radius: 8px; background: rgba(138,170,229,0.1); }
     </style>
     <script>
-        function toggleSwitch(key) {
-            fetch('/' + key + '/toggle', {method: 'GET'})
-                .then(() => location.reload());
-        }
+        function toggle(k) { fetch('/'+k+'/toggle').then(()=>location.reload()); }
     </script>
 </head>
 <body>
     <div class="container">
         <h1>🤖 Keep-Alive 控制中心</h1>
-        
-        <div class="service-card master">
-            <div class="service-info">
-                <h2>🎛️ 控制中心</h2>
-                <p>Master Switch - 全局启停</p>
-            </div>
-            <div style="text-align: right;">
-                <div class="status-indicator">
-                    <span class="dot CONTROL_DOT_CLASS"></span>
-                    <span>CONTROL_STATUS_TEXT</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" CONTROL_CHECKED onchange="toggleSwitch('control')">
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
-        
-        <div class="service-card">
-            <div class="service-info">
-                <h2>🐝 OpenClaw Gateway</h2>
-                <p>Node.js AI Agent Gateway</p>
-            </div>
-            <div style="text-align: right;">
-                <div class="status-indicator">
-                    <span class="dot OPENCLAW_DOT_CLASS"></span>
-                    <span>OPENCLAW_STATUS_TEXT</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" OPENCLAW_CHECKED onchange="toggleSwitch('openclaw')">
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
-        
-        <div class="service-card">
-            <div class="service-info">
-                <h2>🎨 ComfyUI</h2>
-                <p>Python AI Image Generation</p>
-            </div>
-            <div style="text-align: right;">
-                <div class="status-indicator">
-                    <span class="dot COMFYUI_DOT_CLASS"></span>
-                    <span>COMFYUI_STATUS_TEXT</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" COMFYUI_CHECKED onchange="toggleSwitch('comfyui')">
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
-        
-        <div class="links">
-            <a href="/status">📊 状态 API</a>
-            <a href="https://github.com/qq939/openclaw_keep_alive" target="_blank">📚 文档</a>
-        </div>
+        CNT_CARDS
+        <div class="links"><a href="/status">📊 状态</a></div>
     </div>
 </body>
 </html>
 """
 
-def render_status(key):
-    s = status.get(key, "off")
-    return (s.upper() if s == "on" else "OFF", 
-            "on" if s == "on" else "off",
-            "checked" if s == "on" else "")
+def get_status(key):
+    s = read_status(key)
+    return ("ON" if s == "on" else "OFF", "on" if s == "on" else "off", "checked" if s == "on" else "")
 
-@app.route('/', methods=['GET'])
+def make_card(key, title, icon, desc, is_master=False):
+    txt, dot, chk = get_status(key)
+    cls = " master" if is_master else ""
+    return f'''<div class="card{cls}">
+        <div class="info"><h2>{icon} {title}</h2><p>{desc}</p></div>
+        <div style="text-align:right">
+            <div class="status"><span class="dot {dot}"></span><span>{txt}</span></div>
+            <label class="switch"><input type="checkbox" {chk} onchange="toggle('{key}')"><span class="slider"></span></label>
+        </div>
+    </div>'''
+
+@app.route('/')
 def home():
-    rendered = HTML_TEMPLATE
-    
-    cntrl_txt, cntrl_dot, cntrl_chk = render_status("control")
-    openclaw_txt, openclaw_dot, openclaw_chk = render_status("openclaw")
-    comfyui_txt, comfyui_dot, comfyui_chk = render_status("comfyui")
-    
-    rendered = rendered.replace("CONTROL_STATUS_TEXT", cntrl_txt)
-    rendered = rendered.replace("CONTROL_DOT_CLASS", cntrl_dot)
-    rendered = rendered.replace("CONTROL_CHECKED", cntrl_chk)
-    
-    rendered = rendered.replace("OPENCLAW_STATUS_TEXT", openclaw_txt)
-    rendered = rendered.replace("OPENCLAW_DOT_CLASS", openclaw_dot)
-    rendered = rendered.replace("OPENCLAW_CHECKED", openclaw_chk)
-    
-    rendered = rendered.replace("COMFYUI_STATUS_TEXT", comfyui_txt)
-    rendered = rendered.replace("COMFYUI_DOT_CLASS", comfyui_dot)
-    rendered = rendered.replace("COMFYUI_CHECKED", comfyui_chk)
-    
-    response = make_response(rendered)
-    response.headers['Content-Type'] = 'text/html; charset=utf-8'
-    return response
+    cards = make_card("total", "控制中心", "🎛️", "全局启停", True)
+    cards += make_card("openclaw", "OpenClaw Gateway", "🐝", "Node.js AI Agent")
+    cards += make_card("comfy", "ComfyUI", "🎨", "Python AI绘画")
+    return HTML.replace("CNT_CARDS", cards)
 
-@app.route('/status', methods=['GET'])
-def get_status():
-    return jsonify(status)
+@app.route('/status')
+def status():
+    return jsonify({"total": read_status("total"), "openclaw": read_status("openclaw"), "comfy": read_status("comfy")})
 
-@app.route('/control/on', methods=['GET', 'POST'])
-def control_on():
-    status['control'] = 'on'
-    return make_response(f"Control Center is ON. <br><a href='/'>Go back</a>")
-
-@app.route('/control/off', methods=['GET', 'POST'])
-def control_off():
-    status['control'] = 'off'
-    return make_response(f"Control Center is OFF. <br><a href='/'>Go back</a>")
-
-@app.route('/control/toggle', methods=['GET', 'POST'])
-def control_toggle():
-    status['control'] = 'off' if status['control'] == 'on' else 'on'
-    return make_response(f"Control Center is {status['control'].upper()}. <br><a href='/'>Go back</a>")
-
-@app.route('/openclaw/on', methods=['GET', 'POST'])
-def openclaw_on():
-    status['openclaw'] = 'on'
-    return make_response(f"OpenClaw Keep-Alive is ON. <br><a href='/'>Go back</a>")
-
-@app.route('/openclaw/off', methods=['GET', 'POST'])
-def openclaw_off():
-    status['openclaw'] = 'off'
-    return make_response(f"OpenClaw Keep-Alive is OFF. <br><a href='/'>Go back</a>")
-
-@app.route('/openclaw/toggle', methods=['GET', 'POST'])
-def openclaw_toggle():
-    status['openclaw'] = 'off' if status['openclaw'] == 'on' else 'on'
-    return make_response(f"OpenClaw Keep-Alive is {status['openclaw'].upper()}. <br><a href='/'>Go back</a>")
-
-@app.route('/comfyui/on', methods=['GET', 'POST'])
-def comfyui_on():
-    status['comfyui'] = 'on'
-    return make_response(f"ComfyUI Keep-Alive is ON. <br><a href='/'>Go back</a>")
-
-@app.route('/comfyui/off', methods=['GET', 'POST'])
-def comfyui_off():
-    status['comfyui'] = 'off'
-    return make_response(f"ComfyUI Keep-Alive is OFF. <br><a href='/'>Go back</a>")
-
-@app.route('/comfyui/toggle', methods=['GET', 'POST'])
-def comfyui_toggle():
-    status['comfyui'] = 'off' if status['comfyui'] == 'on' else 'on'
-    return make_response(f"ComfyUI Keep-Alive is {status['comfyui'].upper()}. <br><a href='/'>Go back</a>")
+@app.route('/<key>/toggle')
+def toggle(key):
+    cur = read_status(key)
+    write_status(key, "off" if cur == "on" else "on")
+    return f"{key} is {'OFF' if cur == 'on' else 'ON'} <a href='/'>返回</a>"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8079)

@@ -4,3 +4,5 @@ services:
     ports:
       - "7861:8079"
     restart: always
+    volumes:
+      - ./status:/app/../status
