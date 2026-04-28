@@ -15,11 +15,13 @@ function Log-Message($msg) {
 # Function to check if OpenClaw Gateway is running
 function Is-OpenClawRunning {
     try {
-        # Check for node processes with 'gateway' in the command line
+        # Check for node processes with 'openclaw' and 'gateway' in the command line
+        # Actual command line: "C:\Program Files\nodejs\node.exe" --disable-warning=ExperimentalWarning C:\Users\qq939\AppData\Roaming\npm\node_modules\openclaw\openclaw.mjs gateway
         $oc = Get-Process node -ErrorAction SilentlyContinue | Where-Object { 
             try {
                 $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId = $($_.Id)").CommandLine
-                $cmd -like "*openclaw*gateway*" -or $cmd -like "*openclaw*index.js*"
+                # Match patterns like: openclaw.mjs gateway, openclaw gateway, openclaw\openclaw.mjs gateway
+                ($cmd -like "*openclaw*mjs*gateway*") -or ($cmd -like "*openclaw*gateway*") -or ($cmd -like "*openclaw*index.js*gateway*")
             } catch { $false }
         }
         return ($oc -ne $null)
@@ -37,7 +39,10 @@ function Is-ComfyUIRunning {
             try {
                 if ($p.Path -like "*ComfyUI*") { return $true }
                 $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)").CommandLine
+                # Match both "main.py --listen" (space) and "main.py--listen" (no space)
                 if ($cmd -like "*main.py*--listen*") { return $true }
+                if ($cmd -like "*main.py --listen*") { return $true }
+                if ($cmd -like "*ComfyUI*main.py*") { return $true }
             } catch {}
         }
         return $false
@@ -58,7 +63,7 @@ function Get-KeepAliveStatus {
     }
 }
 
-Log-Message "--- Keep-Alive Service Started (Log Version 2.3 - Direct Process Check) ---"
+Log-Message "--- Keep-Alive Service Started (Log Version 2.5 - Fixed ComfyUI Detection) ---"
 
 while($true) {
     try {
@@ -71,11 +76,12 @@ while($true) {
             if (-not (Is-OpenClawRunning)) {
                 Log-Message "OpenClaw Gateway NOT running. Attempting to start..."
                 Start-Process "cmd.exe" -ArgumentList "/c `"$OpenClawCmd`" gateway" -WindowStyle Hidden
-                Start-Sleep -Seconds 5
+                Start-Sleep -Seconds 10
                 if (-not (Is-OpenClawRunning)) {
                     Log-Message "OpenClaw Gateway failed to start. Running doctor --fix..."
                     Start-Process "cmd.exe" -ArgumentList "/c `"$OpenClawCmd`" doctor --fix" -WindowStyle Hidden -Wait
                     Start-Process "cmd.exe" -ArgumentList "/c `"$OpenClawCmd`" gateway" -WindowStyle Hidden
+                    Start-Sleep -Seconds 10
                 }
             }
 
@@ -84,6 +90,7 @@ while($true) {
                 Log-Message "ComfyUI NOT running. Attempting to start..."
                 if (Test-Path $ComfyUIBat) {
                     Start-Process "cmd.exe" -ArgumentList "/c `"$ComfyUIBat`"" -WorkingDirectory $ComfyUIDir -WindowStyle Hidden
+                    Start-Sleep -Seconds 15
                 } else {
                     Log-Message "ERROR: $ComfyUIBat NOT FOUND."
                 }

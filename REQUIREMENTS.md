@@ -1,14 +1,14 @@
 # 项目需求文档 (KeepAliveControl)
 
 ## 1. 项目背景
-在长期运行 OpenClaw (Node.js 基础的网关) 和 ComfyUI (Python 基础的 AI 绘画工具) 时，这些进程可能会因为内存泄漏、系统资源不足或其他不可预见的错误而意外退出。本项目旨在提供一个自动化的保活 (Keep-Alive) 机制，确保这些核心服务在崩溃后能够自动重启，并提供远程控制开关。
+在长期运行 OpenClaw (openclaw gateway) 和 ComfyUI (F:\ComfyUI\run.bat) 时，这些进程可能会因为内存泄漏、系统资源不足或其他不可预见的错误而意外退出。本项目旨在提供一个自动化的保活 (Keep-Alive) 机制，确保这些核心服务在崩溃后能够自动重启，并提供远程控制开关。
 
 ## 2. 核心功能需求
 
 ### 2.1 服务自动监控与重启 (Backend)
 - **监控对象**：
   - **OpenClaw Gateway**：监控 node.js 进程中包含 `openclaw` 关键字的进程。
-  - **ComfyUI**：监控包含 `ComfyUI` 路径或 `main.py --listen` 参数的 python 进程。
+  - **ComfyUI**：监控包含 `ComfyUI` 路径或 `F:\ComfyUI\run.bat` 参数的 python 进程。
 - **自动修复**：
   - 若检测到服务未运行，应自动后台静默启动。
   - 对于 OpenClaw，若直接启动失败，应尝试执行 `openclaw doctor --fix` 进行自我修复后再尝试启动。
